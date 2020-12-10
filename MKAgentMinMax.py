@@ -30,7 +30,7 @@ class MKAgent(object):
     self.game_over = False
     self.my_turn = False
     self.first_turn = True
-    
+
 
 
 
@@ -38,7 +38,7 @@ class MKAgent(object):
               my_player,depth = 0,
              alpha = -99,beta = 99):
     global debbuging_log
-    
+
     if depth == max_depth:
       reward = self.reward(board,my_player)
       # debbuging_log += str(actions) + " "+ str(reward) + "\n"
@@ -52,7 +52,7 @@ class MKAgent(object):
       else:
         action_range = range(8,15)
       action = -1
-      if player == my_player:      
+      if player == my_player:
         max_val = -100
         for i in action_range:
           new_board,new_player,terminal = self.apply_action(board,i,player)
@@ -85,12 +85,55 @@ class MKAgent(object):
         # debbuging_log += "{:s} {:d}\n".format(str(actions),min_val)
         return min_val
 
-    
+
   def reward(self,board,player):
     if player:
-      return (board[15] - self.board[15])   - (board[7] - self.board[7]) 
+      return (board[15] - self.board[15])   - (board[7] - self.board[7])
     else:
       return (board[7] - self.board[7]) - (board[15] - self.board[15])
+
+  # def reward(self,board,player):
+  #   eval_func = 0.0
+  #   for i in range (0, 6):
+  #     heuristics[i] = 0
+  #
+  #   if player:
+  #     heuristics[0] = max(board[8], board[9], board[10], board[11], board[12], board[13], board[14])
+  #     heuristics[1] = board[8] + board[9] + board[10] + board[11] + board[12] + board[13] + board[14]
+  #     for i in range(8, 15):
+  #       if (board[i] > 0):
+  #         heuristics[2] += 1
+  #     heuristics[3] = board[15] - self.board[15]
+  #     if (board[14] > 0):
+  #       heuristics[4] = 1
+  #     else:
+  #       heuristics[4] = 0
+  #     heuristics[5] = board[7] - self.board[7]
+  #
+  #     for i in range(0, 5):
+  #       eval_func += (weights[i] * heuristics[i])
+  #     eval_func -= (weights[5] * heuristics[5])
+  #
+  #     return int(eval_func)
+  #
+  #   else:
+  #     heuristics[0] = max(board[0], board[1], board[2], board[3], board[4], board[5], board[6])
+  #     heuristics[1] = board[0] + board[1] + board[2] + board[3] + board[4] + board[5] + board[6]
+  #     for i in range(0, 7):
+  #       if (board[i] > 0):
+  #         heuristics[2] += 1
+  #     heuristics[3] = board[7] - self.board[7]
+  #     if (board[6] > 0):
+  #       heuristics[4] = 1
+  #     else:
+  #       heuristics[4] = 0
+  #     heuristics[5] = board[15] - self.board[15]
+  #
+  #     for i in range(0, 5):
+  #       eval_func += (weights[i] * heuristics[i])
+  #     eval_func -= (weights[5] * heuristics[5])
+  #
+  #     return int(eval_func)
 
   def reflect(hole):
     if hole < 7:
@@ -150,10 +193,10 @@ class MKAgent(object):
       return (new_board,not player,True)
 
     return (new_board,player,False)
-      
 
-      
-    
+
+
+
 
   def read_msg(self):
     global input_log
@@ -162,7 +205,7 @@ class MKAgent(object):
     input_log += msg
     msg = msg.replace("\n","")
     if msg == "":
-      return False 
+      return False
     if msg == "END":
       self.game_over = True
       return True
@@ -181,7 +224,7 @@ class MKAgent(object):
       if turn == "YOU":
         self.my_turn = True
       elif turn == "OPP":
-        self.my_turn = False  
+        self.my_turn = False
       else:
         self.my_turn = False
 
@@ -192,11 +235,11 @@ class MKAgent(object):
       if self.my_turn:
         board = board.split(",")
         board = list(map(lambda x: int(x),board))
-        self.board = np.array(board)    
-          
+        self.board = np.array(board)
+
     if(self.my_turn):
       return True
-    else:  
+    else:
       return False
 
   def send_swap(self):
@@ -235,7 +278,7 @@ class MKAgent(object):
       if curr_val > max_val:
         max_val = curr_val
         action = i
-        
+
     if action > 7:
       action -= 8
     action +=1
@@ -244,9 +287,9 @@ class MKAgent(object):
 
     return action
 
-      
 
-  def do_action(self): 
+
+  def do_action(self):
     action = self.best_action()
     if(action == -1):
       log.write("No action was chosen\n")
