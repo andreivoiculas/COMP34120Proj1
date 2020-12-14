@@ -86,12 +86,94 @@ class MKAgent(object):
         return min_val
 
 
-  def reward(self,board,player):
+  def getSeeds(self, board, player, hole):
     if player:
-      return (board[15] - self.board[15])   - (board[7] - self.board[7])
+      return board[hole+8]
     else:
-      return (board[7] - self.board[7]) - (board[15] - self.board[15])
+      return board[hole]
 
+  def getSeedsOp(self, board, player, hole):
+    if player:
+      return board[6-hole]
+    else:
+      return board[14-hole]
+
+  def isSeedable(self, board, player, hole):
+    isSeedable = 0;
+
+    for i in range (hole-1, 0, -1):
+      if ((hole - i) == self.getSeeds(board, player, i)):
+        isSeedable = 1;
+        break
+
+    return isSeedable
+
+  def opposite(self, player):
+    return (1 - player)
+
+  # JIMMY BOT HEURISTIC
+  def reward(self, board, player):
+    eval = 0.0
+
+    if player:
+      myStore = board[15]
+      opponentStore = board[7]
+    else:
+      myStore = board[7]
+      opponentStore = board[15]
+
+    # evaluate current position
+    if ((myStore != 0.0 or opponentStore != 0.0) and myStore != opponentStore):
+      if (myStore > opponentStore):
+        positiveAdv = myStore
+        negativeAdv = opponentStore
+      else:
+        positiveAdv = opponentStore
+        negativeAdv = myStore
+
+      eval = ((1.0 / positiveAdv * (positiveAdv - negativeAdv) + 1.0) * positiveAdv)
+      if (opponentStore > myStore):
+        eval *= -1.0
+
+    # check how many holes I can seed
+    for i in range(0, 7):
+      if (self.getSeeds(board, player, i) == 0 and (self.isSeedable(board, player, i) == 1)):
+        eval += (self.getSeedsOp(board, player, i) / 2)
+
+    # check how many holes will lead to extra move
+    for i in range(0, 7):
+      if ((7 - i) == self.getSeeds(board, player, i)):
+        eval += 1.0;
+
+    # count number of seeds on my side
+    mySeeds = 0.0
+    for i in range(0, 7):
+      mySeeds += self.getSeeds(board, player, i)
+
+    # count number of seeds on opponents side
+    opponentSeeds = 0.0
+    for i in range(0,7):
+      opponentSeeds += self.getSeeds(board, self.opposite(player), i)
+
+    # update eval with regard to seed count
+    seedDiff = mySeeds - opponentSeeds
+    eval += (seedDiff/2)
+
+    # check how many holes can opponent seed
+    for i in range(0, 7):
+      if (self.getSeeds(board, self.opposite(player), i) == 0 and self.isSeedable(board, self.opposite(player), i)):
+        eval -= (self.getSeedsOp(board, self.opposite(player), i) / 2)
+
+    return int(eval)
+
+  # INITIAL HEURISTIC
+  # def reward(self,board,player):
+  #   if player:
+  #     return (board[15] - self.board[15])   - (board[7] - self.board[7])
+  #   else:
+  #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
+
+  # HEURISTIC FROM PAPERS
   # def reward(self,board,player):
   #   eval_func = 0.0
   #   for i in range (0, 6):
@@ -262,7 +344,7 @@ class MKAgent(object):
       action_range = range(0,7)
     else:
       action_range = range(8,15)
-    max_val = -99
+    max_val = -200
     depth = 0
     # debbuging_log += "turn\n"
     for i in action_range:
