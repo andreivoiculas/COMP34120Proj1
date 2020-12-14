@@ -17,7 +17,8 @@ debbuging_log = ""
 
 empty_row = np.zeros(7,dtype = int)
 
-
+weights = [0.244, 0.24, 0.525, 1, 1, 1]
+heuristics = [0, 0, 0, 0, 0, 0]
 
 class MKAgent(object):
   """docstring for MKAgent"""
@@ -36,12 +37,13 @@ class MKAgent(object):
 
   def minimax(self,board,player,
               my_player,depth = 0,
-             alpha = -99,beta = 99):
+             alpha = -200,beta = 200):
     global debbuging_log
 
     if depth == max_depth:
       reward = self.reward(board,my_player)
       # debbuging_log += str(actions) + " "+ str(reward) + "\n"
+      # debbuging_log += "REWARD: {:d}".format(reward) + "\n"
       return reward
     else:
       action_range = None
@@ -53,7 +55,7 @@ class MKAgent(object):
         action_range = range(8,15)
       action = -1
       if player == my_player:
-        max_val = -100
+        max_val = -200
         for i in action_range:
           new_board,new_player,terminal = self.apply_action(board,i,player)
           if terminal:
@@ -67,9 +69,10 @@ class MKAgent(object):
           if beta <= alpha:
             break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),max_val)
+        # debbuging_log += "MAX_VAL: {:d}".format(max_val) + "\n"
         return max_val
       else:
-        min_val = 99
+        min_val = 199
         for i in action_range:
           new_board,new_player,terminal = self.apply_action(board,i,player)
           if terminal:
@@ -83,8 +86,8 @@ class MKAgent(object):
           if beta <= alpha:
             break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),min_val)
+        # debbuging_log += "MIN_VAL: {:d}".format(min_val) + "\n"
         return min_val
-
 
   def getSeeds(self, board, player, hole):
     if player:
@@ -110,6 +113,13 @@ class MKAgent(object):
 
   def opposite(self, player):
     return (1 - player)
+
+
+  # def reward(self,board,player):
+  #   if player:
+  #     return (board[15] - self.board[15])   - (board[7] - self.board[7])
+  #   else:
+  #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
 
   # JIMMY BOT HEURISTIC
   def reward(self, board, player):
@@ -261,6 +271,17 @@ class MKAgent(object):
       new_board[hole] +=1
       seeds -= 1
 
+    if (hole < 7 and not player or
+        hole < 14 and hole > 7 and player):
+      if board[hole] == 1:
+        well = MKAgent.point_well(player)
+        if player:
+          opposite = - (hole - 14)
+        else:
+          opposite = -(hole - 6) + 8
+        board[well] += opposite
+        board[opposite] = 0
+
     if hole != MKAgent.point_well(player) or first_turn:
         player = not player
 
@@ -329,6 +350,7 @@ class MKAgent(object):
     sys.stdout.write("SWAP\n")
     sys.stdout.flush()
     output_log += "SWAP\n"
+    self.player = not self.player
 
   def send_move(self,hole):
     global output_log
@@ -346,7 +368,7 @@ class MKAgent(object):
       action_range = range(8,15)
     max_val = -200
     depth = 0
-    # debbuging_log += "turn\n"
+    debbuging_log += "turn\n"
     for i in action_range:
       board,player,terminal = self.apply_action(self.board,i,self.player,
                                                 self.first_turn)
@@ -354,18 +376,27 @@ class MKAgent(object):
         depth = max_depth
       else:
         depth = 0
-      # debbuging_log += "minimax {:d}\n".format(i)
       curr_val = self.minimax(board,player,self.player,depth)
-      debbuging_log += "action value: {:d}".format(curr_val) + "\n"
+      debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
       if curr_val > max_val:
         max_val = curr_val
         action = i
 
     if action > 7:
       action -= 8
-    action +=1
+    action += 1
+
+    if(self.first_turn and not self.player):
+      curr_val = self.minimax(board,self.player,not self.player,depth)
+      debbuging_log += "swap action value: {:d}\n".format(curr_val)
+      if curr_val > max_val:
+        max_val = curr_val
+        action = 0
 
     self.first_turn = False
+
+    debbuging_log += "FINAL action value: {:d}".format(max_val) + "\n"
+    debbuging_log += "FINAL ACTION: {:d}".format(action) + "\n"
 
     return action
 
