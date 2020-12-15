@@ -7,7 +7,6 @@ import math
 sys.setrecursionlimit(200000)
 
 bot_name = sys.argv[1]
-# max_depth = int(sys.argv[2])
 log = open("log_{:s}.txt".format(bot_name),"w")
 # this is what the program outputted last game
 output_log = ""
@@ -16,12 +15,12 @@ input_log = ""
 # any value that might be useful to printout goes here
 debbuging_log = ""
 
-reachEnd = 0
 no_of_moves = 1.0
 
 empty_row = np.zeros(7,dtype = int)
 
-
+weights = [0.244, 0.24, 0.525, 1, 1, 1]
+heuristics = [0, 0, 0, 0, 0, 0]
 
 class MKAgent(object):
   """docstring for MKAgent"""
@@ -34,19 +33,16 @@ class MKAgent(object):
     self.game_over = False
     self.my_turn = False
     self.first_turn = True
-    
 
   def minimax(self,board,player,
               my_player,depth = 0,
-             alpha = -99,beta = 99):
+             alpha = -200,beta = 200):
     global debbuging_log
-    global reachEnd
-    global no_of_moves
 
     if depth == -1 or depth > math.floor(abs(10 - 12/(pow(no_of_moves, 0.5) - 0.3))):
-    # if depth == -1 or depth > math.floor(1/65 * pow(no_of_moves - 18, 2) + 3):
       reward = self.reward(board,my_player)
-    #   debbuging_log += "reward " + str(reward) + "\n"
+      # debbuging_log += str(actions) + " "+ str(reward) + "\n"
+      # debbuging_log += "REWARD: {:d}".format(reward) + "\n"
       return reward
     else:
       action_range = None
@@ -57,12 +53,11 @@ class MKAgent(object):
       else:
         action_range = range(8,15)
       action = -1
-      if player == my_player:      
-        max_val = -100
+      if player == my_player:
+        max_val = -200
         for i in action_range:
-          new_board,new_player,terminal = self.apply_action(board,i,player)
+          new_board,new_player,terminal,illegal_move = self.apply_action(board,i,player)
           if terminal:
-            reachEnd += 1
             new_depth = -1
           else:
             new_depth = depth + 1
@@ -73,13 +68,13 @@ class MKAgent(object):
           if beta <= alpha:
             break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),max_val)
+        # debbuging_log += "MAX_VAL: {:d}".format(max_val) + "\n"
         return max_val
       else:
-        min_val = 99
+        min_val = 199
         for i in action_range:
-          new_board,new_player,terminal = self.apply_action(board,i,player)
+          new_board,new_player,terminal, illegal_move = self.apply_action(board,i,player)
           if terminal:
-            reachEnd += 1
             new_depth = -1
           else:
             new_depth = depth + 1
@@ -90,14 +85,146 @@ class MKAgent(object):
           if beta <= alpha:
             break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),min_val)
+        # debbuging_log += "MIN_VAL: {:d}".format(min_val) + "\n"
         return min_val
 
-    
-  def reward(self,board,player):
+  def getSeeds(self, board, player, hole):
     if player:
-      return (board[15] - self.board[15])   - (board[7] - self.board[7]) 
+      return board[hole+8]
     else:
-      return (board[7] - self.board[7]) - (board[15] - self.board[15])
+      return board[hole]
+
+  def getSeedsOp(self, board, player, hole):
+    if player:
+      return board[6-hole]
+    else:
+      return board[14-hole]
+
+  def isSeedable(self, board, player, hole):
+    isSeedable = 0;
+
+    for i in range (hole-1, 0, -1):
+      if ((hole - i) == self.getSeeds(board, player, i)):
+        isSeedable = 1;
+        break
+
+    return isSeedable
+
+  def opposite(self, player):
+    return (1 - player)
+
+
+  # def reward(self,board,player):
+  #   if player:
+  #     return (board[15] - self.board[15])   - (board[7] - self.board[7])
+  #   else:
+  #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
+
+  # JIMMY BOT HEURISTIC
+  def reward(self, board, player):
+    eval = 0.0
+
+    if player:
+      myStore = board[15]
+      opponentStore = board[7]
+    else:
+      myStore = board[7]
+      opponentStore = board[15]
+
+    # evaluate current position
+    if ((myStore != 0.0 or opponentStore != 0.0) and myStore != opponentStore):
+      if (myStore > opponentStore):
+        positiveAdv = myStore
+        negativeAdv = opponentStore
+      else:
+        positiveAdv = opponentStore
+        negativeAdv = myStore
+
+      eval = ((1.0 / positiveAdv * (positiveAdv - negativeAdv) + 1.0) * positiveAdv)
+      if (opponentStore > myStore):
+        eval *= -1.0
+
+    # check how many holes I can seed
+    for i in range(0, 7):
+      if (self.getSeeds(board, player, i) == 0 and (self.isSeedable(board, player, i) == 1)):
+        eval += (self.getSeedsOp(board, player, i) / 2)
+
+    # check how many holes will lead to extra move
+    for i in range(0, 7):
+      if ((7 - i) == self.getSeeds(board, player, i)):
+        eval += 1.0;
+
+    # count number of seeds on my side
+    mySeeds = 0.0
+    for i in range(0, 7):
+      mySeeds += self.getSeeds(board, player, i)
+
+    # count number of seeds on opponents side
+    opponentSeeds = 0.0
+    for i in range(0,7):
+      opponentSeeds += self.getSeeds(board, self.opposite(player), i)
+
+    # update eval with regard to seed count
+    seedDiff = mySeeds - opponentSeeds
+    eval += (seedDiff/2)
+
+    # check how many holes can opponent seed
+    for i in range(0, 7):
+      if (self.getSeeds(board, self.opposite(player), i) == 0 and self.isSeedable(board, self.opposite(player), i)):
+        eval -= (self.getSeedsOp(board, self.opposite(player), i) / 2)
+
+    return int(eval)
+
+  # INITIAL HEURISTIC
+  # def reward(self,board,player):
+  #   if player:
+  #     return (board[15] - self.board[15])   - (board[7] - self.board[7])
+  #   else:
+  #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
+
+  # HEURISTIC FROM PAPERS
+  # def reward(self,board,player):
+  #   eval_func = 0.0
+  #   for i in range (0, 6):
+  #     heuristics[i] = 0
+  #
+  #   if player:
+  #     heuristics[0] = max(board[8], board[9], board[10], board[11], board[12], board[13], board[14])
+  #     heuristics[1] = board[8] + board[9] + board[10] + board[11] + board[12] + board[13] + board[14]
+  #     for i in range(8, 15):
+  #       if (board[i] > 0):
+  #         heuristics[2] += 1
+  #     heuristics[3] = board[15] - self.board[15]
+  #     if (board[14] > 0):
+  #       heuristics[4] = 1
+  #     else:
+  #       heuristics[4] = 0
+  #     heuristics[5] = board[7] - self.board[7]
+  #
+  #     for i in range(0, 5):
+  #       eval_func += (weights[i] * heuristics[i])
+  #     eval_func -= (weights[5] * heuristics[5])
+  #
+  #     return int(eval_func)
+  #
+  #   else:
+  #     heuristics[0] = max(board[0], board[1], board[2], board[3], board[4], board[5], board[6])
+  #     heuristics[1] = board[0] + board[1] + board[2] + board[3] + board[4] + board[5] + board[6]
+  #     for i in range(0, 7):
+  #       if (board[i] > 0):
+  #         heuristics[2] += 1
+  #     heuristics[3] = board[7] - self.board[7]
+  #     if (board[6] > 0):
+  #       heuristics[4] = 1
+  #     else:
+  #       heuristics[4] = 0
+  #     heuristics[5] = board[15] - self.board[15]
+  #
+  #     for i in range(0, 5):
+  #       eval_func += (weights[i] * heuristics[i])
+  #     eval_func -= (weights[5] * heuristics[5])
+  #
+  #     return int(eval_func)
 
   def reflect(hole):
     if hole < 7:
@@ -118,7 +245,11 @@ class MKAgent(object):
     else:
       return False
 
-  def apply_action(self,board,action,player,first_turn = False):
+  def apply_action(self,board,action,player,first_turn = False,illegal_move = False):
+   #illegal move checker
+    if board[action] == 0:
+      return (board, player, False, True)
+  
     new_board = board.copy()
     seeds = new_board[action]
     if not seeds:
@@ -128,8 +259,8 @@ class MKAgent(object):
         new_board[7] = 98
       else:
         new_board[15] = 98
-      return (new_board,not player,True)
-
+      return (new_board,not player,True, False)
+  
     new_board[action] = 0
     hole = action
     while seeds:
@@ -143,20 +274,35 @@ class MKAgent(object):
       new_board[hole] +=1
       seeds -= 1
 
+    if (hole < 7 and not player or
+        hole < 14 and hole > 7 and player):
+      if board[hole] == 1:
+        well = MKAgent.point_well(player)
+        if player:
+          opposite = - (hole - 14)
+        else:
+          opposite = -(hole - 6) + 8
+        board[well] += opposite
+        board[opposite] = 0
+
     if hole != MKAgent.point_well(player) or first_turn:
         player = not player
 
     if np.array_equal(new_board[0:7],empty_row):
       new_board[15] = sum(new_board[8:15])
       new_board[8:15].fill(0)
-      return (new_board,not player,True)
+      return (new_board,not player,True, False)
 
     elif np.array_equal(new_board[8:15],empty_row) :
       new_board[7] = sum(new_board[0:7])
       new_board[0:7].fill(0)
-      return (new_board,not player,True)
+      return (new_board,not player,True, False)
 
-    return (new_board,player,False)
+    return (new_board,player,False, False)
+
+
+
+
 
   def read_msg(self):
     global input_log
@@ -165,7 +311,7 @@ class MKAgent(object):
     input_log += msg
     msg = msg.replace("\n","")
     if msg == "":
-      return False 
+      return False
     if msg == "END":
       self.game_over = True
       return True
@@ -184,7 +330,7 @@ class MKAgent(object):
       if turn == "YOU":
         self.my_turn = True
       elif turn == "OPP":
-        self.my_turn = False  
+        self.my_turn = False
       else:
         self.my_turn = False
 
@@ -195,11 +341,11 @@ class MKAgent(object):
       if self.my_turn:
         board = board.split(",")
         board = list(map(lambda x: int(x),board))
-        self.board = np.array(board)    
-          
+        self.board = np.array(board)
+
     if(self.my_turn):
       return True
-    else:  
+    else:
       return False
 
   def send_swap(self):
@@ -207,6 +353,7 @@ class MKAgent(object):
     sys.stdout.write("SWAP\n")
     sys.stdout.flush()
     output_log += "SWAP\n"
+    self.player = not self.player
 
   def send_move(self,hole):
     global output_log
@@ -218,42 +365,52 @@ class MKAgent(object):
 
   def best_action(self):
     global debbuging_log
-    global reachEnd
     action = -1
     action_range = None
     if not self.player:
       action_range = range(0,7)
     else:
       action_range = range(8,15)
-    max_val = -99
+    max_val = -200
     depth = 0
-    # debbuging_log += "turn\n"
+    debbuging_log += "turn\n"
     for i in action_range:
-      board,player,terminal = self.apply_action(self.board,i,self.player,
+      board,player,terminal,illegal_move = self.apply_action(self.board,i,self.player,
                                                 self.first_turn)
       if terminal:
-        reachEnd += 1
         depth = -1
       else:
         depth = 0
-      # debbuging_log += "minimax {:d}\n".format(i)
+      if illegal_move:
+      	debbuging_log += "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"+ "\n"
+      	continue
       curr_val = self.minimax(board,player,self.player,depth)
-      debbuging_log += "action value: {:d}".format(curr_val) + "\n"
-      if curr_val > max_val:
+      debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
+      if curr_val > max_val or (i == 6 and max_val == -200 and curr_val == -200):
         max_val = curr_val
         action = i
-        
+
     if action > 7:
       action -= 8
-    action +=1
+    action += 1
+
+    if(self.first_turn and not self.player):
+      curr_val = self.minimax(board,self.player,not self.player,depth)
+      debbuging_log += "swap action value: {:d}\n".format(curr_val)
+      if curr_val > max_val:
+        max_val = curr_val
+        action = 0
 
     self.first_turn = False
 
+    debbuging_log += "FINAL action value: {:d}".format(max_val) + "\n"
+    debbuging_log += "FINAL ACTION: {:d}".format(action) + "\n"
+
     return action
 
-      
 
-  def do_action(self): 
+
+  def do_action(self):
     action = self.best_action()
     if(action == -1):
       log.write("No action was chosen\n")
@@ -272,7 +429,6 @@ try:
 except Exception as e:
   raise e
 finally:
-  log.write(str(reachEnd) + "\n")
   log.write("=========OUTPUT=============\n")
   log.write(output_log)
   log.write("=========INPUT=============\n")
