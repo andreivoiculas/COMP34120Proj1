@@ -1,8 +1,8 @@
+from multiprocessing import Process, Queue
 import os
 import sys
 import copy
 import numpy as np
-from multiprocessing import Process, Queue
 
 sys.setrecursionlimit(200000)
 
@@ -34,12 +34,20 @@ class MKAgent(object):
     self.first_turn = True
 
 
+  def test(i, queue):
+      debbuging_log += "test process"
 
 
   def minimax(self,board,player,
               my_player,depth = 0):
             # alpha = -200,beta = 200):
     global debbuging_log
+    ppid = os.getppid()
+    pid = os.getpid()
+    debbuging_log += "parent id: {:d}\n".format(pid)
+    #print('parent process:', os.getppid())
+    #print('process id:', os.getpid())
+    debbuging_log += "process id: {:d}\n".format(pid)
 
     if depth == max_depth:
       reward = self.reward(board,my_player)
@@ -58,8 +66,11 @@ class MKAgent(object):
       if player == my_player:
         max_val = -200
         max_queue = Queue()
+        debbuging_log += "player == my_player\n"
         for i in action_range:
+          debbuging_log += "Create process {:d}\n".format(i)
           p = Process(target=apply_action_conccurent_myPlayer, args=(board,i,player,my_player,new_depth,max_queue))
+          debbuging_log += "Start process {:d}\n".format(i)
           p.start()
           # new_board,new_player,terminal = self.apply_action(board,i,player)
           # if terminal:
@@ -81,8 +92,14 @@ class MKAgent(object):
       else:
         min_val = 199
         min_queue = Queue()
+        debbuging_log += "player == enemy\n"
         for i in action_range:
-          p = Process(target=apply_action_conccurent_opPlayer, args=(board,i,player,my_player,new_depth,min_queue))
+          debbuging_log += "Create process {:d}\n".format(i)
+          try:
+              p = Process(target=apply_action_conccurent_enemy, args=(action))#board,i,player,my_player,new_depth,min_queue))
+          except Exception as e:
+              debbuging_log += "{:s}\n".format(e)
+          debbuging_log += "Start process {:d}\n".format(i)
           p.start()
           # new_board,new_player,terminal = self.apply_action(board,i,player)
           # if terminal:
@@ -104,9 +121,12 @@ class MKAgent(object):
           min_val = min(min_val,min_queue.get())
         return min_val
 
-  def apply_action_conccurent_myPlayer(self,board,action,player,my_player,new_depth,queue):
-    print('parent process:', os.getppid())
-    print('process id:', os.getpid())
+  def apply_action_conccurent_myPlayer(board,action,player,my_player,new_depth,queue):
+    debbuging_log += "Entered apply_action_conccurent_myPlayer\n"
+    debbuging_log += "parent id: {:d}\n".format(os.getppid())
+    #print('parent process:', os.getppid())
+    #print('process id:', os.getpid())
+    debbuging_log += "process id: {:d}\n".format(os.getpid())
     new_board,new_player,terminal = self.apply_action(board,action,player)
     if terminal:
       new_depth = max_depth
@@ -118,10 +138,13 @@ class MKAgent(object):
     # max_val = max(max_val,curr_val)
     # alpha = max(alpha,curr_val)
     # if beta <= alpha
-
-  def apply_action_conccurent_opPlayer(self,board,action,player,my_player,new_depth,queue):
-    print('parent process:', os.getppid())
-    print('process id:', os.getpid())
+#p = Process(target=apply_action_conccurent_enemy, args=(board,i,player,my_player,new_depth,min_queue))
+  def apply_action_conccurent_enemy(action):#board,action,player,my_player,new_depth,queue):
+    debbuging_log += "Entered apply_action_conccurent_enemy\n"
+    debbuging_log += "parent id: {:d}\n".format(os.getppid())
+    #print('parent process:', os.getppid())
+    #print('process id:', os.getpid())
+    debbuging_log += "process id: {:d}\n".format(os.getpid())
     new_board,new_player,terminal = self.apply_action(board,i,player)
     if terminal:
       new_depth = max_depth
@@ -422,6 +445,7 @@ class MKAgent(object):
         depth = max_depth
       else:
         depth = 0
+      debbuging_log += "First minimax\n"
       curr_val = self.minimax(board,player,self.player,depth)
       debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
       if curr_val > max_val:
