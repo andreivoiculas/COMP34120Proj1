@@ -2,6 +2,7 @@ import os
 import sys
 import copy
 import numpy as np
+from multiprocessing import Process, Queue
 
 sys.setrecursionlimit(200000)
 
@@ -36,8 +37,8 @@ class MKAgent(object):
 
 
   def minimax(self,board,player,
-              my_player,depth = 0,
-             alpha = -200,beta = 200):
+              my_player,depth = 0):
+            # alpha = -200,beta = 200):
     global debbuging_log
 
     if depth == max_depth:
@@ -56,38 +57,83 @@ class MKAgent(object):
       action = -1
       if player == my_player:
         max_val = -200
+        max_queue = Queue()
         for i in action_range:
-          new_board,new_player,terminal = self.apply_action(board,i,player)
-          if terminal:
-            new_depth = max_depth
-          else:
-            new_depth = depth + 1
-          curr_val = self.minimax(new_board,new_player,my_player,
-                                  new_depth,alpha,beta)
-          max_val = max(max_val,curr_val)
-          alpha = max(alpha,curr_val)
-          if beta <= alpha:
-            break
+          p = Process(target=apply_action_conccurent_myPlayer, args=(board,i,player,my_player,new_depth,max_queue))
+          p.start()
+          # new_board,new_player,terminal = self.apply_action(board,i,player)
+          # if terminal:
+          #   new_depth = max_depth
+          # else:
+          #   new_depth = depth + 1
+          # curr_val = self.minimax(new_board,new_player,my_player,
+          #                         new_depth,alpha,beta)
+          # max_val = max(max_val,curr_val)
+          # alpha = max(alpha,curr_val)
+          # if beta <= alpha:
+          #   break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),max_val)
         # debbuging_log += "MAX_VAL: {:d}".format(max_val) + "\n"
+        p.join()
+        while not max_queue.empty():
+          max_val = max(max_val,max_queue.get())
         return max_val
       else:
         min_val = 199
+        min_queue = Queue()
         for i in action_range:
-          new_board,new_player,terminal = self.apply_action(board,i,player)
-          if terminal:
-            new_depth = max_depth
-          else:
-            new_depth = depth + 1
-          curr_val = self.minimax(new_board,new_player,my_player,
-                                  new_depth,alpha,beta)
-          beta = min(beta,curr_val)
-          min_val = min(min_val,curr_val)
-          if beta <= alpha:
-            break
+          p = Process(target=apply_action_conccurent_opPlayer, args=(board,i,player,my_player,new_depth,min_queue))
+          p.start()
+          # new_board,new_player,terminal = self.apply_action(board,i,player)
+          # if terminal:
+          #   new_depth = max_depth
+          # else:
+          #   new_depth = depth + 1
+          # curr_val = self.minimax(new_board,new_player,my_player,
+          #                         new_depth,alpha,beta)
+          # beta = min(beta,curr_val)
+          # min_val = min(min_val,curr_val)
+          # if beta <= alpha:
+          #   break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),min_val)
         # debbuging_log += "MIN_VAL: {:d}".format(min_val) + "\n"
+        #put results from precesses in queue
+        #return min_val from queue
+        p.join()
+        while not min_queue.empty():
+          min_val = min(min_val,min_queue.get())
         return min_val
+
+  def apply_action_conccurent_myPlayer(self,board,action,player,my_player,new_depth,queue):
+    print('parent process:', os.getppid())
+    print('process id:', os.getpid())
+    new_board,new_player,terminal = self.apply_action(board,action,player)
+    if terminal:
+      new_depth = max_depth
+    else:
+      new_depth = depth + 1
+    curr_val = self.minimax(new_board,new_player,my_player,
+                            new_depth)
+    queue.put(curr_val)
+    # max_val = max(max_val,curr_val)
+    # alpha = max(alpha,curr_val)
+    # if beta <= alpha
+
+  def apply_action_conccurent_opPlayer(self,board,action,player,my_player,new_depth,queue):
+    print('parent process:', os.getppid())
+    print('process id:', os.getpid())
+    new_board,new_player,terminal = self.apply_action(board,i,player)
+    if terminal:
+      new_depth = max_depth
+    else:
+      new_depth = depth + 1
+    curr_val = self.minimax(new_board,new_player,my_player,
+                            new_depth)
+    queue.put(curr_val)
+    # beta = min(beta,curr_val)
+    # min_val = min(min_val,curr_val)
+    # if beta <= alpha:
+    #   break
 
   def getSeeds(self, board, player, hole):
     if player:
