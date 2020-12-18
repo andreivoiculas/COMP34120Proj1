@@ -37,7 +37,7 @@ class MKAgent(object):
 
   def minimax(self,board,player,
               my_player,depth = 0,
-             alpha = -200,beta = 200):
+             alpha = -200,beta = 200,first_turn =  False):
     # global debbuging_log
 
     if depth == max_depth:
@@ -85,9 +85,11 @@ class MKAgent(object):
           min_val = min(min_val,curr_val)
           if beta <= alpha:
             break
-        # debbuging_log += "{:s} {:d}\n".format(str(actions),min_val)
-        # debbuging_log += "MIN_VAL: {:d}".format(min_val) + "\n"
-        return min_val
+      if(first_turn and not player):
+        curr_val = self.minimax(board,not player,my_player,depth)
+        # debbuging_log += "swap action value: {:d}\n".format(curr_val)
+        min_val = min(min_val,curr_val)
+      return min_val
 
   def getSeeds(self, board, player, hole):
     if player:
@@ -400,7 +402,7 @@ class MKAgent(object):
         depth = max_depth
       else:
         depth = 0
-      curr_val = self.minimax(board,player,self.player,depth)
+      curr_val = self.minimax(board,player,self.player,depth, first_turn = self.first_turn)
       # debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
       if curr_val > max_val:
         max_val = curr_val
