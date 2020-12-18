@@ -450,7 +450,7 @@ try:
       agent.do_action()
 except Exception as e:
   raise e
-finally:
+# finally:
   # log.write("=========OUTPUT=============\n")
   # log.write(output_log)
   # log.write("=========INPUT=============\n")
