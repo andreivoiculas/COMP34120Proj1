@@ -102,14 +102,36 @@ class MKAgent(object):
       return board[14-hole]
 
   def isSeedable(self, board, player, hole):
-    isSeedable = 0;
 
-    for i in range (hole-1, 0, -1):
-      if ((hole - i) == self.getSeeds(board, player, i)):
-        isSeedable = 1;
-        break
+    if player:
+      hole += 8
 
-    return isSeedable
+    if (board[hole] == 15):
+      return 1
+    elif (board[hole] == 0):
+      if player:
+        for i in range(hole-1, 7, -1):
+          if (hole-i) == self.getSeeds(board, player, i-8):
+            return 1
+        for i in range(14, hole, -1):
+          if (board[i] > 8 and board[i] < 15):
+            if (hole-i+15) == self.getSeeds(board, player, i-8):
+              return 1
+      else:
+        for i in range(hole-1, -1, -1):
+          if (hole-i) == self.getSeeds(board, player, i):
+            return 1
+        for i in range(6, hole, -1):
+          if (board[i] > 8 and board[i] < 15):
+            if(hole-i+15) == self.getSeeds(board,player,i):
+              return 1
+
+    # for i in range (hole-1, 0, -1):
+    #   if ((hole - i) == self.getSeeds(board, player, i)):
+    #     return 1
+    #     break
+
+    return 0
 
   def opposite(self, player):
     return (1 - player)
@@ -147,7 +169,8 @@ class MKAgent(object):
 
     # check how many holes I can seed
     for i in range(0, 7):
-      if (self.getSeeds(board, player, i) == 0 and (self.isSeedable(board, player, i) == 1)):
+      # if (self.getSeeds(board, player, i) == 0 and (self.isSeedable(board, player, i) == 1)):
+      if (self.isSeedable(board, player, i) == 1):
         eval += (self.getSeedsOp(board, player, i) / 2)
 
     # check how many holes will lead to extra move
@@ -171,7 +194,8 @@ class MKAgent(object):
 
     # check how many holes can opponent seed
     for i in range(0, 7):
-      if (self.getSeeds(board, self.opposite(player), i) == 0 and self.isSeedable(board, self.opposite(player), i)):
+      # if (self.getSeeds(board, self.opposite(player), i) == 0 and self.isSeedable(board, self.opposite(player), i)):
+      if (self.isSeedable(board, self.opposite(player), i) == 1):
         eval -= (self.getSeedsOp(board, self.opposite(player), i) / 2)
 
     return int(eval)
@@ -381,6 +405,12 @@ class MKAgent(object):
       if curr_val > max_val:
         max_val = curr_val
         action = i
+
+    if (self.board[action] == 0):
+      for i in action_range:
+        if (self.board[i] != 0):
+          action = i
+          break
 
     if action > 7:
       action -= 8
