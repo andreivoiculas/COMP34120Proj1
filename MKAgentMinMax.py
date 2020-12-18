@@ -143,7 +143,7 @@ class MKAgent(object):
   #   else:
   #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
 
-  # JIMMY BOT HEURISTIC
+  # FINAL HEURISTIC
   def reward(self, board, player):
     eval = 0.0
 
