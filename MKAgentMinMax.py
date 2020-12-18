@@ -7,13 +7,13 @@ sys.setrecursionlimit(200000)
 
 bot_name = sys.argv[1]
 max_depth = int(sys.argv[2])
-log = open("log_{:s}.txt".format(bot_name),"w")
+# log = open("log_{:s}.txt".format(bot_name),"w")
 # this is what the program outputted last game
-output_log = ""
+# output_log = ""
 # this was the engine input from last game
-input_log = ""
+# input_log = ""
 # any value that might be useful to printout goes here
-debbuging_log = ""
+# debbuging_log = ""
 
 empty_row = np.zeros(7,dtype = int)
 
@@ -23,7 +23,7 @@ heuristics = [0, 0, 0, 0, 0, 0]
 class MKAgent(object):
   """docstring for MKAgent"""
   def __init__(self):
-    global debbuging_log
+    # global debbuging_log
 
     super(MKAgent, self).__init__()
     self.player = -1
@@ -38,7 +38,7 @@ class MKAgent(object):
   def minimax(self,board,player,
               my_player,depth = 0,
              alpha = -200,beta = 200):
-    global debbuging_log
+    # global debbuging_log
 
     if depth == max_depth:
       reward = self.reward(board,my_player)
@@ -326,10 +326,10 @@ class MKAgent(object):
 
 
   def read_msg(self):
-    global input_log
+    # global input_log
 
     msg = sys.stdin.readline()
-    input_log += msg
+    # input_log += msg
     msg = msg.replace("\n","")
     if msg == "":
       return False
@@ -370,20 +370,20 @@ class MKAgent(object):
       return False
 
   def send_swap(self):
-    global output_log
+    # global output_log
     sys.stdout.write("SWAP\n")
     sys.stdout.flush()
-    output_log += "SWAP\n"
+    # output_log += "SWAP\n"
     self.player = not self.player
 
   def send_move(self,hole):
-    global output_log
+    # global output_log
     sys.stdout.write("MOVE;{:d}\n".format(hole))
     sys.stdout.flush()
     output_log += "MOVE;{:d}\n".format(hole)
 
   def best_action(self):
-    global debbuging_log
+    # global debbuging_log
     action = -1
     action_range = None
     if not self.player:
@@ -392,7 +392,7 @@ class MKAgent(object):
       action_range = range(8,15)
     max_val = -200
     depth = 0
-    debbuging_log += "turn\n"
+    # debbuging_log += "turn\n"
     for i in action_range:
       board,player,terminal = self.apply_action(self.board,i,self.player,
                                                 self.first_turn)
@@ -401,7 +401,7 @@ class MKAgent(object):
       else:
         depth = 0
       curr_val = self.minimax(board,player,self.player,depth)
-      debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
+      # debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
       if curr_val > max_val:
         max_val = curr_val
         action = i
@@ -418,15 +418,15 @@ class MKAgent(object):
 
     if(self.first_turn and not self.player):
       curr_val = self.minimax(board,self.player,not self.player,depth)
-      debbuging_log += "swap action value: {:d}\n".format(curr_val)
+      # debbuging_log += "swap action value: {:d}\n".format(curr_val)
       if curr_val > max_val:
         max_val = curr_val
         action = 0
 
     self.first_turn = False
 
-    debbuging_log += "FINAL action value: {:d}".format(max_val) + "\n"
-    debbuging_log += "FINAL ACTION: {:d}".format(action) + "\n"
+    # debbuging_log += "FINAL action value: {:d}".format(max_val) + "\n"
+    # debbuging_log += "FINAL ACTION: {:d}".format(action) + "\n"
 
     return action
 
@@ -451,11 +451,11 @@ try:
 except Exception as e:
   raise e
 finally:
-  log.write("=========OUTPUT=============\n")
-  log.write(output_log)
-  log.write("=========INPUT=============\n")
-  log.write(input_log)
-  log.write("=========DEBUG=============\n")
-  log.write(debbuging_log)
-  log.close()
+  # log.write("=========OUTPUT=============\n")
+  # log.write(output_log)
+  # log.write("=========INPUT=============\n")
+  # log.write(input_log)
+  # log.write("=========DEBUG=============\n")
+  # log.write(debbuging_log)
+  # log.close()
 # data_file.close()
