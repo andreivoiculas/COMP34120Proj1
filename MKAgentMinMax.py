@@ -380,7 +380,7 @@ class MKAgent(object):
     # global output_log
     sys.stdout.write("MOVE;{:d}\n".format(hole))
     sys.stdout.flush()
-    output_log += "MOVE;{:d}\n".format(hole)
+    # output_log += "MOVE;{:d}\n".format(hole)
 
   def best_action(self):
     # global debbuging_log
