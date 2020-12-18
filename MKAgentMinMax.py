@@ -5,8 +5,9 @@ import numpy as np
 
 sys.setrecursionlimit(200000)
 
-bot_name = sys.argv[1]
-max_depth = int(sys.argv[2])
+# bot_name = sys.argv[1]
+# max_depth = int(sys.argv[2])
+max_depth = 7
 # log = open("log_{:s}.txt".format(bot_name),"w")
 # this is what the program outputted last game
 # output_log = ""
