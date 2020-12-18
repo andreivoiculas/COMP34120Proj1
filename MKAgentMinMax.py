@@ -1,10 +1,11 @@
 from multiprocessing import Process, Queue
+import queue
 import os
 import sys
 import copy
 import numpy as np
 
-sys.setrecursionlimit(200000)
+sys.setrecursionlimit(20000)
 
 bot_name = sys.argv[1]
 max_depth = int(sys.argv[2])
@@ -13,13 +14,40 @@ log = open("log_{:s}.txt".format(bot_name),"w")
 output_log = ""
 # this was the engine input from last game
 input_log = ""
-# any value that might be useful to printout goes here
+# any value that might be useful to `print`out goes here
 debbuging_log = ""
 
 empty_row = np.zeros(7,dtype = int)
 
 weights = [0.244, 0.24, 0.525, 1, 1, 1]
 heuristics = [0, 0, 0, 0, 0, 0]
+
+def apply_action_conccurent_myPlayer(self,board,action,player,my_player,new_depth,queue):
+    new_board,new_player,terminal = self.apply_action(board,action,player)
+    if terminal:
+      new_depth = max_depth
+    else:
+      new_depth +=  1
+    curr_val = self.minimax(new_board,new_player,my_player,
+                            new_depth)
+    queue.put(curr_val)
+    # max_val = max(max_val,curr_val)
+    # alpha = max(alpha,curr_val)
+    # if beta <= alpha
+
+def apply_action_conccurent_enemy(self,board,action,player,my_player,new_depth,queue):
+    new_board,new_player,terminal = self.apply_action(board,action,player)
+    if terminal:
+      new_depth = max_depth
+    else:
+      new_depth += 1
+    curr_val = self.minimax(new_board,new_player,my_player,
+                            new_depth)
+    queue.put(curr_val)
+    # beta = min(beta,curr_val)
+    # min_val = min(min_val,curr_val)
+    # if beta <= alpha:
+    #   break
 
 class MKAgent(object):
   """docstring for MKAgent"""
@@ -34,20 +62,10 @@ class MKAgent(object):
     self.first_turn = True
 
 
-  def test(i, queue):
-      debbuging_log += "test process"
-
-
   def minimax(self,board,player,
               my_player,depth = 0):
             # alpha = -200,beta = 200):
     global debbuging_log
-    ppid = os.getppid()
-    pid = os.getpid()
-    debbuging_log += "parent id: {:d}\n".format(pid)
-    #print('parent process:', os.getppid())
-    #print('process id:', os.getpid())
-    debbuging_log += "process id: {:d}\n".format(pid)
 
     if depth == max_depth:
       reward = self.reward(board,my_player)
@@ -57,7 +75,7 @@ class MKAgent(object):
     else:
       action_range = None
       new_board = None
-      new_depth = None
+      new_depth = 0
       if not player:
         action_range = range(0,7)
       else:
@@ -66,23 +84,10 @@ class MKAgent(object):
       if player == my_player:
         max_val = -200
         max_queue = Queue()
-        debbuging_log += "player == my_player\n"
         for i in action_range:
-          debbuging_log += "Create process {:d}\n".format(i)
-          p = Process(target=apply_action_conccurent_myPlayer, args=(board,i,player,my_player,new_depth,max_queue))
-          debbuging_log += "Start process {:d}\n".format(i)
+          p = Process(target=apply_action_conccurent_myPlayer, args=(self,board,i,player,my_player,depth,max_queue))
+          #debbuging_log += "Start process {:d}\n".format(i)
           p.start()
-          # new_board,new_player,terminal = self.apply_action(board,i,player)
-          # if terminal:
-          #   new_depth = max_depth
-          # else:
-          #   new_depth = depth + 1
-          # curr_val = self.minimax(new_board,new_player,my_player,
-          #                         new_depth,alpha,beta)
-          # max_val = max(max_val,curr_val)
-          # alpha = max(alpha,curr_val)
-          # if beta <= alpha:
-          #   break
         # debbuging_log += "{:s} {:d}\n".format(str(actions),max_val)
         # debbuging_log += "MAX_VAL: {:d}".format(max_val) + "\n"
         p.join()
@@ -91,72 +96,18 @@ class MKAgent(object):
         return max_val
       else:
         min_val = 199
-        min_queue = Queue()
-        debbuging_log += "player == enemy\n"
+        min_queue = queue.Queue(maxsize=1000)
+        threads = list()
         for i in action_range:
-          debbuging_log += "Create process {:d}\n".format(i)
-          try:
-              p = Process(target=apply_action_conccurent_enemy, args=(action))#board,i,player,my_player,new_depth,min_queue))
-          except Exception as e:
-              debbuging_log += "{:s}\n".format(e)
-          debbuging_log += "Start process {:d}\n".format(i)
+          p = Process(target=apply_action_conccurent_enemy, args=(self,board,i,player,my_player,depth,min_queue))
+          #debbuging_log += "Start process {:d}\n".format(i)
           p.start()
-          # new_board,new_player,terminal = self.apply_action(board,i,player)
-          # if terminal:
-          #   new_depth = max_depth
-          # else:
-          #   new_depth = depth + 1
-          # curr_val = self.minimax(new_board,new_player,my_player,
-          #                         new_depth,alpha,beta)
-          # beta = min(beta,curr_val)
-          # min_val = min(min_val,curr_val)
-          # if beta <= alpha:
-          #   break
-        # debbuging_log += "{:s} {:d}\n".format(str(actions),min_val)
-        # debbuging_log += "MIN_VAL: {:d}".format(min_val) + "\n"
-        #put results from precesses in queue
-        #return min_val from queue
         p.join()
         while not min_queue.empty():
           min_val = min(min_val,min_queue.get())
         return min_val
 
-  def apply_action_conccurent_myPlayer(board,action,player,my_player,new_depth,queue):
-    debbuging_log += "Entered apply_action_conccurent_myPlayer\n"
-    debbuging_log += "parent id: {:d}\n".format(os.getppid())
-    #print('parent process:', os.getppid())
-    #print('process id:', os.getpid())
-    debbuging_log += "process id: {:d}\n".format(os.getpid())
-    new_board,new_player,terminal = self.apply_action(board,action,player)
-    if terminal:
-      new_depth = max_depth
-    else:
-      new_depth = depth + 1
-    curr_val = self.minimax(new_board,new_player,my_player,
-                            new_depth)
-    queue.put(curr_val)
-    # max_val = max(max_val,curr_val)
-    # alpha = max(alpha,curr_val)
-    # if beta <= alpha
-#p = Process(target=apply_action_conccurent_enemy, args=(board,i,player,my_player,new_depth,min_queue))
-  def apply_action_conccurent_enemy(action):#board,action,player,my_player,new_depth,queue):
-    debbuging_log += "Entered apply_action_conccurent_enemy\n"
-    debbuging_log += "parent id: {:d}\n".format(os.getppid())
-    #print('parent process:', os.getppid())
-    #print('process id:', os.getpid())
-    debbuging_log += "process id: {:d}\n".format(os.getpid())
-    new_board,new_player,terminal = self.apply_action(board,i,player)
-    if terminal:
-      new_depth = max_depth
-    else:
-      new_depth = depth + 1
-    curr_val = self.minimax(new_board,new_player,my_player,
-                            new_depth)
-    queue.put(curr_val)
-    # beta = min(beta,curr_val)
-    # min_val = min(min_val,curr_val)
-    # if beta <= alpha:
-    #   break
+
 
   def getSeeds(self, board, player, hole):
     if player:
@@ -184,13 +135,7 @@ class MKAgent(object):
     return (1 - player)
 
 
-  # def reward(self,board,player):
-  #   if player:
-  #     return (board[15] - self.board[15])   - (board[7] - self.board[7])
-  #   else:
-  #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
 
-  # JIMMY BOT HEURISTIC
   def reward(self, board, player):
     eval = 0.0
 
@@ -245,56 +190,6 @@ class MKAgent(object):
 
     return int(eval)
 
-  # INITIAL HEURISTIC
-  # def reward(self,board,player):
-  #   if player:
-  #     return (board[15] - self.board[15])   - (board[7] - self.board[7])
-  #   else:
-  #     return (board[7] - self.board[7]) - (board[15] - self.board[15])
-
-  # HEURISTIC FROM PAPERS
-  # def reward(self,board,player):
-  #   eval_func = 0.0
-  #   for i in range (0, 6):
-  #     heuristics[i] = 0
-  #
-  #   if player:
-  #     heuristics[0] = max(board[8], board[9], board[10], board[11], board[12], board[13], board[14])
-  #     heuristics[1] = board[8] + board[9] + board[10] + board[11] + board[12] + board[13] + board[14]
-  #     for i in range(8, 15):
-  #       if (board[i] > 0):
-  #         heuristics[2] += 1
-  #     heuristics[3] = board[15] - self.board[15]
-  #     if (board[14] > 0):
-  #       heuristics[4] = 1
-  #     else:
-  #       heuristics[4] = 0
-  #     heuristics[5] = board[7] - self.board[7]
-  #
-  #     for i in range(0, 5):
-  #       eval_func += (weights[i] * heuristics[i])
-  #     eval_func -= (weights[5] * heuristics[5])
-  #
-  #     return int(eval_func)
-  #
-  #   else:
-  #     heuristics[0] = max(board[0], board[1], board[2], board[3], board[4], board[5], board[6])
-  #     heuristics[1] = board[0] + board[1] + board[2] + board[3] + board[4] + board[5] + board[6]
-  #     for i in range(0, 7):
-  #       if (board[i] > 0):
-  #         heuristics[2] += 1
-  #     heuristics[3] = board[7] - self.board[7]
-  #     if (board[6] > 0):
-  #       heuristics[4] = 1
-  #     else:
-  #       heuristics[4] = 0
-  #     heuristics[5] = board[15] - self.board[15]
-  #
-  #     for i in range(0, 5):
-  #       eval_func += (weights[i] * heuristics[i])
-  #     eval_func -= (weights[5] * heuristics[5])
-  #
-  #     return int(eval_func)
 
   def reflect(hole):
     if hole < 7:
@@ -445,7 +340,7 @@ class MKAgent(object):
         depth = max_depth
       else:
         depth = 0
-      debbuging_log += "First minimax\n"
+      #debbuging_log += "First minimax\n"
       curr_val = self.minimax(board,player,self.player,depth)
       debbuging_log += "action {:d} value: {:d}\n".format(i+1,curr_val)
       if curr_val > max_val:
@@ -471,7 +366,6 @@ class MKAgent(object):
     return action
 
 
-
   def do_action(self):
     action = self.best_action()
     if(action == -1):
@@ -481,21 +375,22 @@ class MKAgent(object):
     elif(action <= 7):
       self.send_move(action)
 
-try:
-  agent = MKAgent()
-  while True:
-    if(agent.read_msg()):
-      if(agent.game_over):
-        break
-      agent.do_action()
-except Exception as e:
-  raise e
-finally:
-  log.write("=========OUTPUT=============\n")
-  log.write(output_log)
-  log.write("=========INPUT=============\n")
-  log.write(input_log)
-  log.write("=========DEBUG=============\n")
-  log.write(debbuging_log)
-  log.close()
-# data_file.close()
+if __name__ == '__main__':
+    try:
+      agent = MKAgent()
+      while True:
+        if(agent.read_msg()):
+          if(agent.game_over):
+            break
+          agent.do_action()
+    except Exception as e:
+      raise e
+    finally:
+      log.write("=========OUTPUT=============\n")
+      log.write(output_log)
+      log.write("=========INPUT=============\n")
+      log.write(input_log)
+      log.write("=========DEBUG=============\n")
+      log.write(debbuging_log)
+      log.close()
+    # data_file.close()
