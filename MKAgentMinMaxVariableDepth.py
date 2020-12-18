@@ -42,7 +42,7 @@ class MKAgent(object):
              alpha = -200,beta = 200,first_turn =  False):
     # global debbuging_log
 
-    if depth == -1 or depth > math.floor(abs(10 - 12/(pow(no_of_moves, 0.5) - 0.3))):
+    if depth == -1 or depth > math.floor(abs(9 - 12/(pow(no_of_moves, 0.5) - 0.3))):
       reward = self.reward(board,my_player)
       # debbuging_log += str(actions) + " "+ str(reward) + "\n"
       # debbuging_log += "REWARD: {:d}".format(reward) + "\n"
